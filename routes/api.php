@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\UniversityController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\VerificationController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\DegreeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -43,6 +44,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // User management routes (Super Admin only)
     Route::apiResource('users', UserController::class);
+
+    // Degree management routes
+    Route::apiResource('degrees', DegreeController::class);
 });
 
 // Put wildcard route at the very bottom
