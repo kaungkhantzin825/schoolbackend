@@ -23,6 +23,9 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/universities/search', [UniversityController::class, 'search']);
 Route::post('/verify', [VerificationController::class, 'verify']);
 
+// Public: fetch degrees for a specific university (used on verification form)
+Route::get('/universities/{university}/degrees', [DegreeController::class, 'byUniversity']);
+
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {

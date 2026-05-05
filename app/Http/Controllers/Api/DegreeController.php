@@ -72,4 +72,18 @@ class DegreeController extends Controller
 
         return response()->json(['message' => 'Degree deleted successfully']);
     }
+
+    /**
+     * Public: Get all active degrees for a specific university.
+     * Used by the public verification form (no auth required).
+     */
+    public function byUniversity($universityId)
+    {
+        $degrees = Degree::where('university_id', $universityId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'level']);
+
+        return response()->json($degrees);
+    }
 }
