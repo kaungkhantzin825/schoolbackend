@@ -37,6 +37,7 @@ class UniversityController extends Controller
             'description' => 'nullable|string',
             'logo_url' => 'nullable|url',
             'status' => 'required|in:active,inactive',
+            'verification_notice' => 'nullable|string',
         ]);
 
         $university = University::create($request->all());
@@ -51,12 +52,18 @@ class UniversityController extends Controller
 
     public function update(Request $request, University $university)
     {
+        // Enforce role authorization
+        if ($request->user() && $request->user()->isUniversityAdmin() && $request->user()->university_id !== $university->id) {
+            return response()->json(['message' => 'Forbidden: You can only edit your own university.'], 403);
+        }
+
         $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'location' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
             'logo_url' => 'nullable|url',
             'status' => 'sometimes|required|in:active,inactive',
+            'verification_notice' => 'nullable|string',
         ]);
 
         $university->update($request->all());
@@ -81,7 +88,7 @@ class UniversityController extends Controller
                       ->orWhere('location', 'like', "%{$search}%");
             })
             ->limit(10)
-            ->get(['id', 'name', 'location', 'logo_url']);
+            ->get(['id', 'name', 'location', 'logo_url', 'description', 'verification_notice']);
 
         return response()->json($universities);
     }

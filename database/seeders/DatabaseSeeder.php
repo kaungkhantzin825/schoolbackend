@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
             'role' => 'super_admin',
         ]);
 
+        $defaultNotice = "Students who completed their courses or graduated in 2023, 2024, or 2025 will receive instant verification results through the system. For older or archived academic records, manual verification by the university's registrar team is required. Credential searches and processing may take approximately 2 to 5 business days.";
+
         // Create Universities
         $um1 = University::create([
             'name' => 'University of Medicine 1',
@@ -27,6 +29,7 @@ class DatabaseSeeder extends Seeder
             'description' => 'The University of Medicine 1, Yangon (UM1) is the oldest and most prestigious medical school in Myanmar. Established on February 2, 1927, it has a long-standing history of excellence and serves as a cornerstone for the country\'s healthcare system.',
             'logo_url' => 'https://upload.wikimedia.org/wikipedia/en/thumb/8/87/University_of_Medicine_1%2C_Yangon_logo.png/150px-University_of_Medicine_1%2C_Yangon_logo.png',
             'status' => 'active',
+            'verification_notice' => $defaultNotice,
         ]);
 
         $um2 = University::create([
@@ -35,6 +38,7 @@ class DatabaseSeeder extends Seeder
             'description' => 'University of Medicine 2, Yangon is a leading medical institution in Myanmar.',
             'logo_url' => 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/UM2ygn.png/150px-UM2ygn.png',
             'status' => 'active',
+            'verification_notice' => $defaultNotice,
         ]);
 
         $umMandalay = University::create([
@@ -43,6 +47,7 @@ class DatabaseSeeder extends Seeder
             'description' => 'University of Medicine, Mandalay is a premier medical school in Upper Myanmar.',
             'logo_url' => 'https://upload.wikimedia.org/wikipedia/my/thumb/3/30/UOM_MDY.png/220px-UOM_MDY.png',
             'status' => 'active',
+            'verification_notice' => $defaultNotice,
         ]);
 
         $techUni = University::create([
@@ -51,6 +56,7 @@ class DatabaseSeeder extends Seeder
             'description' => 'Technological University, Mandalay offers engineering and technology programs.',
             'logo_url' => 'https://upload.wikimedia.org/wikipedia/en/thumb/0/07/MTU%2C_Myanmar_logo.jpg/200px-MTU%2C_Myanmar_logo.jpg',
             'status' => 'active',
+            'verification_notice' => $defaultNotice,
         ]);
 
         $umMagway = University::create([
@@ -58,6 +64,7 @@ class DatabaseSeeder extends Seeder
             'location' => 'Magway',
             'description' => 'University of Medicine, Magway provides quality medical education.',
             'status' => 'active',
+            'verification_notice' => $defaultNotice,
         ]);
 
         // Create University Admins

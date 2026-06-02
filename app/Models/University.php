@@ -16,6 +16,7 @@ class University extends Model
         'description',
         'logo_url',
         'status',
+        'verification_notice',
     ];
 
     public function students(): HasMany
