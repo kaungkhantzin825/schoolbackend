@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\VerificationController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\DegreeController;
+use App\Http\Controllers\Api\RegistrationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,9 @@ Route::post('/verify', [VerificationController::class, 'verify']);
 // Public: fetch degrees for a specific university (used on verification form)
 Route::get('/universities/{university}/degrees', [DegreeController::class, 'byUniversity']);
 
+// Public: verifier-organization registration request (from the "Sign up" page)
+Route::post('/registrations', [RegistrationController::class, 'store']);
+
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -38,8 +42,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/universities/stats', [UniversityController::class, 'stats']);
 
     // Student routes
+    Route::post('/students/upload-photo', [StudentController::class, 'uploadPhoto']);
     Route::apiResource('students', StudentController::class);
     Route::post('/students/bulk-upload', [StudentController::class, 'bulkUpload']);
+
+    // Registration request review (Super Admin)
+    Route::get('/registrations', [RegistrationController::class, 'index']);
+    Route::patch('/registrations/{registrationRequest}', [RegistrationController::class, 'update']);
 
     // Verification routes
     Route::get('/verification-logs', [VerificationController::class, 'logs']);

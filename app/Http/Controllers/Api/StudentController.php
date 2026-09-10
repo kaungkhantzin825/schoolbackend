@@ -81,6 +81,25 @@ class StudentController extends Controller
         return response()->json(['message' => 'Student deleted successfully']);
     }
 
+    /**
+     * Upload a student photo and return its public URL.
+     * Stored under public/uploads/student-photos (no storage:link required).
+     */
+    public function uploadPhoto(Request $request)
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,jpg,png,webp|max:4096',
+        ]);
+
+        $file = $request->file('photo');
+        $name = 'stu_' . uniqid() . '.' . strtolower($file->getClientOriginalExtension());
+        $file->move(public_path('uploads/student-photos'), $name);
+
+        return response()->json([
+            'url' => rtrim(config('app.url'), '/') . '/uploads/student-photos/' . $name,
+        ]);
+    }
+
     public function bulkUpload(Request $request)
     {
         $request->validate([
