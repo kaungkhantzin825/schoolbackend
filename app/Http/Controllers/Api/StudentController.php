@@ -10,6 +10,36 @@ use Illuminate\Support\Facades\DB;
 
 class StudentController extends Controller
 {
+    /** Hard ceiling so one request can never ask for the whole table. */
+    private const MAX_PER_PAGE = 100;
+
+    /**
+     * A university admin may only ever touch their own university's records.
+     * Returns null when allowed, or a 403 response when not.
+     */
+    private function denyIfForeign(Request $request, int $universityId)
+    {
+        $user = $request->user();
+
+        if ($user && $user->isUniversityAdmin() && $user->university_id !== $universityId) {
+            return response()->json([
+                'message' => 'This record belongs to another university.',
+            ], 403);
+        }
+
+        return null;
+    }
+
+    /** The university a write should be attributed to, ignoring client input for tenants. */
+    private function resolveUniversityId(Request $request): ?int
+    {
+        $user = $request->user();
+
+        return $user && $user->isUniversityAdmin()
+            ? $user->university_id
+            : $request->integer('university_id');
+    }
+
     public function index(Request $request)
     {
         $query = Student::with('university');
@@ -23,7 +53,17 @@ class StudentController extends Controller
             $query->where('university_id', $request->university_id);
         }
 
-        $students = $query->paginate(20);
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('graduate_name', 'like', "%{$search}%")
+                  ->orWhere('nrc_number', 'like', "%{$search}%")
+                  ->orWhere('student_id', 'like', "%{$search}%")
+                  ->orWhere('degree', 'like', "%{$search}%");
+            });
+        }
+
+        $perPage = min((int) $request->input('per_page', 20), self::MAX_PER_PAGE);
+        $students = $query->orderByDesc('id')->paginate($perPage);
 
         return response()->json($students);
     }
@@ -44,18 +84,38 @@ class StudentController extends Controller
             'photo_url' => 'nullable|url',
         ]);
 
-        $student = Student::create($request->all());
+        $universityId = $this->resolveUniversityId($request);
+
+        if ($deny = $this->denyIfForeign($request, (int) $universityId)) {
+            return $deny;
+        }
+
+        $student = Student::create(array_merge(
+            $request->only([
+                'graduate_name', 'father_name', 'gender', 'date_of_birth', 'nrc_number',
+                'student_id', 'degree', 'specialization', 'graduation_year', 'photo_url',
+            ]),
+            ['university_id' => $universityId],
+        ));
 
         return response()->json($student->load('university'), 201);
     }
 
-    public function show(Student $student)
+    public function show(Request $request, Student $student)
     {
+        if ($deny = $this->denyIfForeign($request, $student->university_id)) {
+            return $deny;
+        }
+
         return response()->json($student->load('university'));
     }
 
     public function update(Request $request, Student $student)
     {
+        if ($deny = $this->denyIfForeign($request, $student->university_id)) {
+            return $deny;
+        }
+
         $request->validate([
             'graduate_name' => 'sometimes|required|string|max:255',
             'father_name' => 'sometimes|required|string|max:255',
@@ -69,13 +129,22 @@ class StudentController extends Controller
             'photo_url' => 'nullable|url',
         ]);
 
-        $student->update($request->all());
+        // Never take university_id from the request — a tenant could otherwise
+        // move a record into (or out of) another university.
+        $student->update($request->only([
+            'graduate_name', 'father_name', 'gender', 'date_of_birth', 'nrc_number',
+            'student_id', 'degree', 'specialization', 'graduation_year', 'photo_url',
+        ]));
 
         return response()->json($student->load('university'));
     }
 
-    public function destroy(Student $student)
+    public function destroy(Request $request, Student $student)
     {
+        if ($deny = $this->denyIfForeign($request, $student->university_id)) {
+            return $deny;
+        }
+
         $student->delete();
 
         return response()->json(['message' => 'Student deleted successfully']);
@@ -104,43 +173,59 @@ class StudentController extends Controller
     {
         $request->validate([
             'university_id' => 'required|exists:universities,id',
-            'students' => 'required|array',
-            'students.*.graduate_name' => 'required|string',
-            'students.*.father_name' => 'required|string',
+            // Capped: an unbounded array would hold a DB transaction open for
+            // minutes and exhaust memory under concurrent uploads.
+            'students' => 'required|array|max:2000',
+            'students.*.graduate_name' => 'required|string|max:255',
+            'students.*.father_name' => 'required|string|max:255',
             'students.*.gender' => 'required|in:Male,Female,Other',
             'students.*.date_of_birth' => 'required|date',
-            'students.*.nrc_number' => 'required|string',
-            'students.*.degree' => 'required|string',
-            'students.*.graduation_year' => 'required|integer',
+            'students.*.nrc_number' => 'required|string|max:100',
+            'students.*.degree' => 'required|string|max:255',
+            'students.*.graduation_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
         ]);
+
+        $universityId = $this->resolveUniversityId($request);
+
+        if ($deny = $this->denyIfForeign($request, (int) $universityId)) {
+            return $deny;
+        }
+
+        $fields = [
+            'graduate_name', 'father_name', 'gender', 'date_of_birth', 'nrc_number',
+            'student_id', 'degree', 'specialization', 'graduation_year', 'photo_url',
+        ];
 
         $inserted = 0;
         $errors = [];
 
-        DB::beginTransaction();
-        try {
-            foreach ($request->students as $index => $studentData) {
-                try {
-                    $studentData['university_id'] = $request->university_id;
-                    Student::create($studentData);
-                    $inserted++;
-                } catch (\Exception $e) {
-                    $errors[] = [
-                        'row' => $index + 1,
-                        'error' => $e->getMessage(),
-                    ];
-                }
+        foreach ($request->students as $index => $studentData) {
+            // Each row commits independently: one bad NRC should not silently
+            // discard the whole file, and a single long transaction blocks
+            // other writers.
+            try {
+                Student::create(array_merge(
+                    array_intersect_key($studentData, array_flip($fields)),
+                    ['university_id' => $universityId],
+                ));
+                $inserted++;
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'row' => $index + 1,
+                    'name' => $studentData['graduate_name'] ?? null,
+                    // Don't echo raw SQL back to the client.
+                    'error' => str_contains($e->getMessage(), 'Duplicate entry')
+                        ? 'A record with this NRC number already exists.'
+                        : 'Could not save this row. Please check the values.',
+                ];
             }
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['message' => 'Bulk upload failed', 'error' => $e->getMessage()], 500);
         }
 
         return response()->json([
             'message' => 'Bulk upload completed',
             'inserted' => $inserted,
-            'errors' => $errors,
+            'failed' => count($errors),
+            'errors' => array_slice($errors, 0, 50),
         ]);
     }
 }

@@ -45,9 +45,16 @@ class UniversityController extends Controller
         return response()->json($university, 201);
     }
 
+    /**
+     * Public university profile.
+     *
+     * Must NOT include the student list: this endpoint is unauthenticated and
+     * every student row carries an NRC number and date of birth. It also
+     * returned the entire cohort on every page load.
+     */
     public function show(University $university)
     {
-        return response()->json($university->load('students'));
+        return response()->json($university->loadCount('students'));
     }
 
     public function update(Request $request, University $university)

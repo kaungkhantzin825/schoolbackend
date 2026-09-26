@@ -8,6 +8,20 @@ use Illuminate\Http\Request;
 
 class DegreeController extends Controller
 {
+    /** A university admin may only manage their own university's degrees. */
+    private function denyIfForeign(Request $request, int $universityId)
+    {
+        $user = $request->user();
+
+        if ($user && $user->isUniversityAdmin() && $user->university_id !== $universityId) {
+            return response()->json([
+                'message' => 'This degree belongs to another university.',
+            ], 403);
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
         $query = Degree::with('university');
@@ -41,18 +55,39 @@ class DegreeController extends Controller
             'status' => 'required|in:active,inactive',
         ]);
 
-        $degree = Degree::create($request->all());
+        // Tenants always write to their own university, whatever they posted.
+        $user = $request->user();
+        $universityId = $user && $user->isUniversityAdmin()
+            ? $user->university_id
+            : $request->integer('university_id');
+
+        if ($deny = $this->denyIfForeign($request, (int) $universityId)) {
+            return $deny;
+        }
+
+        $degree = Degree::create(array_merge(
+            $request->only(['code', 'name', 'description', 'level', 'status']),
+            ['university_id' => $universityId],
+        ));
 
         return response()->json($degree->load('university'), 201);
     }
 
-    public function show(Degree $degree)
+    public function show(Request $request, Degree $degree)
     {
+        if ($deny = $this->denyIfForeign($request, $degree->university_id)) {
+            return $deny;
+        }
+
         return response()->json($degree->load('university'));
     }
 
     public function update(Request $request, Degree $degree)
     {
+        if ($deny = $this->denyIfForeign($request, $degree->university_id)) {
+            return $deny;
+        }
+
         $request->validate([
             'code' => 'sometimes|required|string|max:50',
             'name' => 'sometimes|required|string|max:255',
@@ -61,13 +96,17 @@ class DegreeController extends Controller
             'status' => 'sometimes|required|in:active,inactive',
         ]);
 
-        $degree->update($request->all());
+        $degree->update($request->only(['code', 'name', 'description', 'level', 'status']));
 
         return response()->json($degree->load('university'));
     }
 
-    public function destroy(Degree $degree)
+    public function destroy(Request $request, Degree $degree)
     {
+        if ($deny = $this->denyIfForeign($request, $degree->university_id)) {
+            return $deny;
+        }
+
         $degree->delete();
 
         return response()->json(['message' => 'Degree deleted successfully']);

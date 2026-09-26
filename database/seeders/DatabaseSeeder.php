@@ -54,7 +54,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Technological University',
             'location' => 'Mandalay',
             'description' => 'Technological University, Mandalay offers engineering and technology programs.',
-            'logo_url' => 'https://upload.wikimedia.org/wikipedia/en/thumb/0/07/MTU%2C_Myanmar_logo.jpg/200px-MTU%2C_Myanmar_logo.jpg',
+            'logo_url' => 'https://upload.wikimedia.org/wikipedia/en/thumb/0/07/MTU%2C_Myanmar_logo-3.png/200px-MTU%2C_Myanmar_logo-3.png',
             'status' => 'active',
             'verification_notice' => $defaultNotice,
         ]);
@@ -204,9 +204,219 @@ class DatabaseSeeder extends Seeder
             ]
         ]);
 
+        // Create Verifier User (Mr. Smith)
+        $verifierUser = User::firstOrCreate(
+            ['email' => 'smith@verifier.com'],
+            [
+                'name' => 'Mr. Smith',
+                'password' => Hash::make('password123'),
+                'role' => 'verifier',
+            ]
+        );
+
+        // Add exact students for Image 1 (Verified Records)
+        $s1 = Student::updateOrCreate(
+            ['nrc_number' => '5/Kapana(N)32490'],
+            [
+                'university_id' => $um1->id,
+                'graduate_name' => 'Maung Maung',
+                'father_name' => 'U Kaung',
+                'gender' => 'Male',
+                'date_of_birth' => '2020-03-05',
+                'student_id' => '098777',
+                'degree' => 'M.Med.Sc',
+                'specialization' => 'Master of Medical Science',
+                'graduation_year' => 2023,
+            ]
+        );
+
+        $s2 = Student::updateOrCreate(
+            ['nrc_number' => '5/Kapana(N)22476'],
+            [
+                'university_id' => $techUni->id,
+                'graduate_name' => 'Aung Aung',
+                'father_name' => 'U Hla',
+                'gender' => 'Male',
+                'date_of_birth' => '2020-02-23',
+                'student_id' => '09763',
+                'degree' => 'B.E',
+                'specialization' => 'Petroleum',
+                'graduation_year' => 2023,
+            ]
+        );
+
+        $s3 = Student::updateOrCreate(
+            ['nrc_number' => '5/Kapana(N)29523'],
+            [
+                'university_id' => $techUni->id,
+                'graduate_name' => 'Bo Bo',
+                'father_name' => 'U Kyaw',
+                'gender' => 'Male',
+                'date_of_birth' => '2020-08-08',
+                'student_id' => '07633',
+                'degree' => 'B.E',
+                'specialization' => 'Civil',
+                'graduation_year' => 2025,
+            ]
+        );
+
+        // Verified Records (Image 1)
+        \App\Models\VerificationLog::updateOrCreate(
+            ['request_ref' => 'VR-VERIFIED-01'],
+            [
+                'university_id' => $um1->id,
+                'student_id' => $s1->id,
+                'request_ref' => 'VR-VERIFIED-01',
+                'verifier_name' => 'Mr. Smith',
+                'verifier_email' => 'smith@verifier.com',
+                'organization_type' => 'Employer',
+                'organization_name' => 'Frontiir Tech & Healthcare',
+                'searched_name' => 'Maung Maung',
+                'searched_father_name' => 'U Kaung',
+                'searched_degree' => 'M.Med.Sc',
+                'searched_year' => 2023,
+                'result' => 'verified',
+                'status' => 'success',
+                'created_at' => now()->subDays(3),
+                'updated_at' => now()->subDays(3),
+            ]
+        );
+
+        \App\Models\VerificationLog::updateOrCreate(
+            ['request_ref' => 'VR-VERIFIED-02'],
+            [
+                'university_id' => $techUni->id,
+                'student_id' => $s2->id,
+                'request_ref' => 'VR-VERIFIED-02',
+                'verifier_name' => 'Mr. Smith',
+                'verifier_email' => 'smith@verifier.com',
+                'organization_type' => 'Employer',
+                'organization_name' => 'Frontiir Tech & Healthcare',
+                'searched_name' => 'Aung Aung',
+                'searched_father_name' => 'U Hla',
+                'searched_degree' => 'B.E(Petroleum)',
+                'searched_year' => 2023,
+                'result' => 'verified',
+                'status' => 'success',
+                'created_at' => now()->subDays(2),
+                'updated_at' => now()->subDays(2),
+            ]
+        );
+
+        \App\Models\VerificationLog::updateOrCreate(
+            ['request_ref' => 'VR-VERIFIED-03'],
+            [
+                'university_id' => $techUni->id,
+                'student_id' => $s3->id,
+                'request_ref' => 'VR-VERIFIED-03',
+                'verifier_name' => 'Mr. Smith',
+                'verifier_email' => 'smith@verifier.com',
+                'organization_type' => 'Employer',
+                'organization_name' => 'Frontiir Tech & Healthcare',
+                'searched_name' => 'Bo Bo',
+                'searched_father_name' => 'U Kyaw',
+                'searched_degree' => 'B.E(Civil)',
+                'searched_year' => 2025,
+                'result' => 'verified',
+                'status' => 'success',
+                'created_at' => now()->subDays(1),
+                'updated_at' => now()->subDays(1),
+            ]
+        );
+
+        // Pending Requests (Image 2)
+        \App\Models\VerificationLog::updateOrCreate(
+            ['request_ref' => 'VR-1034'],
+            [
+                'university_id' => $techUni->id,
+                'student_id' => null,
+                'request_ref' => 'VR-1034',
+                'verifier_name' => 'Mr. Smith',
+                'verifier_email' => 'smith@verifier.com',
+                'organization_type' => 'Employer',
+                'organization_name' => 'Frontiir Tech & Healthcare',
+                'searched_name' => 'Maung Maung',
+                'searched_father_name' => 'U Ba',
+                'searched_degree' => 'B.E.(Civil)',
+                'searched_year' => 2020,
+                'result' => 'not_found',
+                'status' => 'pending',
+                'sla_due_at' => now()->addDay(),
+                'created_at' => '2024-03-12 10:00:00',
+                'updated_at' => '2024-03-12 10:00:00',
+            ]
+        );
+
+        \App\Models\VerificationLog::updateOrCreate(
+            ['request_ref' => 'VR-1035'],
+            [
+                'university_id' => $techUni->id,
+                'student_id' => null,
+                'request_ref' => 'VR-1035',
+                'verifier_name' => 'Mr. Smith',
+                'verifier_email' => 'smith@verifier.com',
+                'organization_type' => 'Employer',
+                'organization_name' => 'Frontiir Tech & Healthcare',
+                'searched_name' => 'Aung Aung',
+                'searched_father_name' => 'U Tin',
+                'searched_degree' => 'B.Sc.(Computer)',
+                'searched_year' => 2019,
+                'result' => 'not_found',
+                'status' => 'pending',
+                'sla_due_at' => now()->addDays(2),
+                'created_at' => '2024-03-13 11:30:00',
+                'updated_at' => '2024-03-13 11:30:00',
+            ]
+        );
+
+        \App\Models\VerificationLog::updateOrCreate(
+            ['request_ref' => 'VR-1036'],
+            [
+                'university_id' => $techUni->id,
+                'student_id' => null,
+                'request_ref' => 'VR-1036',
+                'verifier_name' => 'Mr. Smith',
+                'verifier_email' => 'smith@verifier.com',
+                'organization_type' => 'Employer',
+                'organization_name' => 'Frontiir Tech & Healthcare',
+                'searched_name' => 'Bo Bo',
+                'searched_father_name' => 'U Kyaw',
+                'searched_degree' => 'M.A.(History)',
+                'searched_year' => 2018,
+                'result' => 'not_found',
+                'status' => 'pending',
+                'sla_due_at' => now()->addDays(5),
+                'created_at' => '2024-03-14 09:15:00',
+                'updated_at' => '2024-03-14 09:15:00',
+            ]
+        );
+
+        \App\Models\VerificationLog::updateOrCreate(
+            ['request_ref' => 'VR-1037'],
+            [
+                'university_id' => $um1->id,
+                'student_id' => null,
+                'request_ref' => 'VR-1037',
+                'verifier_name' => 'Dr. Wilson',
+                'verifier_email' => 'wilson@ygh.gov.mm',
+                'organization_type' => 'Hospital',
+                'organization_name' => 'Yangon General Hospital',
+                'searched_name' => 'Su Su Hlaing',
+                'searched_father_name' => 'U Hla Win',
+                'searched_degree' => 'MBBS',
+                'searched_year' => 2018,
+                'result' => 'not_found',
+                'status' => 'pending',
+                'sla_due_at' => now()->addDays(3),
+                'created_at' => now()->subDay(),
+                'updated_at' => now()->subDay(),
+            ]
+        );
+
         $this->command->info('Database seeded successfully!');
         $this->command->info('Super Admin: superadmin@system.com / password123');
         $this->command->info('UM1 Admin: john@um1.edu / password123');
         $this->command->info('Tech Admin: mary@tech.edu / password123');
+        $this->command->info('Verifier: smith@verifier.com / password123');
     }
 }

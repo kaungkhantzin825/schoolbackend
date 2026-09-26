@@ -21,7 +21,17 @@ class UserController extends Controller
             $query->where('university_id', $request->university_id);
         }
 
-        $users = $query->get();
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // Verifier accounts are self-service and unbounded in number, so this
+        // list must never be fetched whole.
+        $users = $query->orderByDesc('id')
+            ->paginate(min((int) $request->input('per_page', 50), 200));
 
         return response()->json($users);
     }
@@ -32,7 +42,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:super_admin,university_admin',
+            'role' => 'required|in:super_admin,university_admin,verifier',
             'university_id' => 'required_if:role,university_admin|exists:universities,id',
         ]);
 
@@ -58,7 +68,7 @@ class UserController extends Controller
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'sometimes|nullable|string|min:8',
-            'role' => 'sometimes|required|in:super_admin,university_admin',
+            'role' => 'sometimes|required|in:super_admin,university_admin,verifier',
             'university_id' => 'required_if:role,university_admin|exists:universities,id',
         ]);
 

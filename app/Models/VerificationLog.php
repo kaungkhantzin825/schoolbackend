@@ -13,6 +13,7 @@ class VerificationLog extends Model
     protected $fillable = [
         'university_id',
         'student_id',
+        'request_ref',
         'verifier_name',
         'verifier_email',
         'organization_type',
@@ -23,7 +24,12 @@ class VerificationLog extends Model
         'searched_year',
         'result',
         'status',
+        'sla_due_at',
         'notes',
+    ];
+
+    protected $casts = [
+        'sla_due_at' => 'datetime',
     ];
 
     public function university(): BelongsTo

@@ -7,59 +7,73 @@ use App\Http\Controllers\Api\VerificationController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\DegreeController;
 use App\Http\Controllers\Api\RegistrationController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
+|
+| Public endpoints are rate limited — they are reachable by anyone and are
+| the obvious targets for credential stuffing and scraping.
+|
+| NOTE: there is deliberately no public "register" route. Admin accounts are
+| created by a Super Admin via /users; verifier accounts via /registrations.
+| A public register endpoint that accepted a `role` would let anyone mint a
+| super admin.
+|
 */
 
-// Public routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+// ── Public ──
+// Named limiters live in RouteServiceProvider: they key on the account or the
+// signed-in user rather than the raw IP, so shared office connections are not
+// collectively locked out.
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
-// Protect routes that clash with {university}
-Route::get('/universities/search', [UniversityController::class, 'search']);
-Route::post('/verify', [VerificationController::class, 'verify']);
-
-// Public: fetch degrees for a specific university (used on verification form)
+Route::get('/universities/search', [UniversityController::class, 'search'])->middleware('throttle:search');
+Route::post('/verify', [VerificationController::class, 'verify'])->middleware('throttle:verify');
 Route::get('/universities/{university}/degrees', [DegreeController::class, 'byUniversity']);
+Route::post('/registrations', [RegistrationController::class, 'store'])->middleware('throttle:registrations');
 
-// Public: verifier-organization registration request (from the "Sign up" page)
-Route::post('/registrations', [RegistrationController::class, 'store']);
-
-
-// Protected routes
+// ── Authenticated ──
 Route::middleware('auth:sanctum')->group(function () {
-    // Auth routes
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
 
-    // University routes
-    Route::apiResource('universities', UniversityController::class)->except(['show']);
-    Route::get('/universities/stats', [UniversityController::class, 'stats']);
-
-    // Student routes
-    Route::post('/students/upload-photo', [StudentController::class, 'uploadPhoto']);
-    Route::apiResource('students', StudentController::class);
-    Route::post('/students/bulk-upload', [StudentController::class, 'bulkUpload']);
-
-    // Registration request review (Super Admin)
-    Route::get('/registrations', [RegistrationController::class, 'index']);
-    Route::patch('/registrations/{registrationRequest}', [RegistrationController::class, 'update']);
-
-    // Verification routes
+    // Own verification history — scoped per role inside the controller
     Route::get('/verification-logs', [VerificationController::class, 'logs']);
     Route::get('/verification-logs/recent', [VerificationController::class, 'recentActivity']);
+    Route::post('/verification-logs/{verificationLog}/recheck', [VerificationController::class, 'recheck']);
 
-    // User management routes (Super Admin only)
-    Route::apiResource('users', UserController::class);
+    Route::get('/universities', [UniversityController::class, 'index']);
 
-    // Degree management routes
-    Route::apiResource('degrees', DegreeController::class);
+    // ── Registrar + Super Admin ──
+    Route::middleware('role:super_admin,university_admin')->group(function () {
+        Route::post('/verification-logs/{verificationLog}/resolve', [VerificationController::class, 'resolve']);
+
+        Route::post('/students/upload-photo', [StudentController::class, 'uploadPhoto']);
+        Route::post('/students/bulk-upload', [StudentController::class, 'bulkUpload']);
+        Route::apiResource('students', StudentController::class);
+
+        Route::apiResource('degrees', DegreeController::class);
+
+        Route::get('/universities/stats', [UniversityController::class, 'stats']);
+        Route::put('/universities/{university}', [UniversityController::class, 'update']);
+        Route::patch('/universities/{university}', [UniversityController::class, 'update']);
+    });
+
+    // ── Super Admin only ──
+    Route::middleware('role:super_admin')->group(function () {
+        Route::apiResource('users', UserController::class);
+
+        Route::post('/universities', [UniversityController::class, 'store']);
+        Route::delete('/universities/{university}', [UniversityController::class, 'destroy']);
+
+        Route::get('/registrations', [RegistrationController::class, 'index']);
+        Route::patch('/registrations/{registrationRequest}', [RegistrationController::class, 'update']);
+    });
 });
 
-// Put wildcard route at the very bottom
+// Wildcard last so it cannot shadow /universities/search or /universities/stats
 Route::get('/universities/{university}', [UniversityController::class, 'show']);

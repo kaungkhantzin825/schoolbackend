@@ -10,30 +10,34 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    /**
+     * Let a signed-in user replace their password.
+     *
+     * Verifier accounts are provisioned with a generated password that is
+     * emailed to them, so they need a way to set their own.
+     */
+    public function changePassword(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'current_password' => 'required|string',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:super_admin,university_admin',
-            'university_id' => 'required_if:role,university_admin|exists:universities,id',
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'university_id' => $request->university_id,
-        ]);
+        $user = $request->user();
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        if (!Hash::check($request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Your current password is incorrect.'],
+            ]);
+        }
 
-        return response()->json([
-            'user' => $user->load('university'),
-            'token' => $token,
-        ], 201);
+        $user->update(['password' => Hash::make($request->password)]);
+
+        // Invalidate every other session; keep the one making the change.
+        $currentId = $request->user()->currentAccessToken()->id;
+        $user->tokens()->where('id', '!=', $currentId)->delete();
+
+        return response()->json(['message' => 'Password updated successfully.']);
     }
 
     public function login(Request $request)

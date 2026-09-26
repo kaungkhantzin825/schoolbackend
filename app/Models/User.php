@@ -58,4 +58,9 @@ class User extends Authenticatable
     {
         return $this->role === 'university_admin';
     }
+
+    public function isVerifier(): bool
+    {
+        return $this->role === 'verifier';
+    }
 }
