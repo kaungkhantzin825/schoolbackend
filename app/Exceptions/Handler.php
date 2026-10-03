@@ -85,12 +85,36 @@ class Handler extends ExceptionHandler
                 ], $status);
             }
 
-            // Unexpected failure: log the detail, return a generic message.
+            // Unexpected failure: log the detail under a short reference the
+            // user can quote, so the exact line can be found in laravel.log
+            // without exposing the stack trace to the client.
+            $ref = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+
+            logger()->error("[ERR-{$ref}] {$e->getMessage()}", [
+                'ref' => $ref,
+                'exception' => get_class($e),
+                'file' => $e->getFile() . ':' . $e->getLine(),
+                'url' => $request->fullUrl(),
+                'user_id' => optional($request->user())->id,
+            ]);
             report($e);
 
-            return response()->json([
-                'message' => 'A server error occurred. Please try again shortly.',
-            ], 500);
+            $payload = [
+                'message' => "A server error occurred (ref: ERR-{$ref}). Please try again, or quote this reference to support.",
+                'error_ref' => $ref,
+            ];
+
+            // With APP_DEBUG on, surface the real cause — otherwise a server
+            // problem is undiagnosable without shell access to the log.
+            if (config('app.debug')) {
+                $payload['debug'] = [
+                    'exception' => get_class($e),
+                    'error' => $e->getMessage(),
+                    'at' => $e->getFile() . ':' . $e->getLine(),
+                ];
+            }
+
+            return response()->json($payload, 500);
         });
     }
 }

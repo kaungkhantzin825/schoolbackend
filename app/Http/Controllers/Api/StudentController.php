@@ -162,7 +162,32 @@ class StudentController extends Controller
 
         $file = $request->file('photo');
         $name = 'stu_' . uniqid() . '.' . strtolower($file->getClientOriginalExtension());
-        $file->move(public_path('uploads/student-photos'), $name);
+        $directory = public_path('uploads/student-photos');
+
+        // On Linux hosting this directory often doesn't exist after a deploy,
+        // or isn't writable by the web user. Report that clearly instead of
+        // letting it surface as an opaque 500.
+        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+            return response()->json([
+                'message' => 'Upload folder could not be created on the server. Create "public/uploads/student-photos" and make it writable (chmod 775).',
+            ], 500);
+        }
+
+        if (!is_writable($directory)) {
+            return response()->json([
+                'message' => 'Upload folder is not writable on the server. Run: chmod -R 775 public/uploads',
+            ], 500);
+        }
+
+        try {
+            $file->move($directory, $name);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'The photo could not be saved on the server. Please check the upload folder permissions.',
+            ], 500);
+        }
 
         return response()->json([
             'url' => rtrim(config('app.url'), '/') . '/uploads/student-photos/' . $name,
