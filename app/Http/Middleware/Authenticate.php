@@ -8,10 +8,16 @@ use Illuminate\Http\Request;
 class Authenticate extends Middleware
 {
     /**
-     * Get the path the user should be redirected to when they are not authenticated.
+     * This is an API-only backend — there is no `login` named route to send a
+     * browser to. Returning null makes an unauthenticated request answer with
+     * a clean 401 JSON response.
+     *
+     * The default (`route('login')`) threw RouteNotFoundException and surfaced
+     * as a confusing 500 whenever a request arrived without an
+     * `Accept: application/json` header (e.g. multipart file uploads).
      */
     protected function redirectTo(Request $request): ?string
     {
-        return $request->expectsJson() ? null : route('login');
+        return null;
     }
 }
