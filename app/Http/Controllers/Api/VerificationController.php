@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\RegistrationRequest;
 use App\Models\Student;
 use App\Models\VerificationLog;
 use Illuminate\Http\Request;
@@ -17,12 +18,16 @@ class VerificationController extends Controller
             'father_name' => 'required|string',
             'degree' => 'required|string',
             'graduation_year' => 'required|integer',
-            'verifier_name' => 'nullable|string',
-            'verifier_email' => 'nullable|email',
-            'organization_type' => 'nullable|string',
-            'organization_name' => 'nullable|string',
-            'notes' => 'nullable|string',
+            'notes' => 'nullable|string|max:1000',
         ]);
+
+        // Identify the verifier from their signed-in account rather than from
+        // anything they type: /verify is a public route, so the token is read
+        // through the sanctum guard explicitly. Anonymous checks stay allowed.
+        $actor = $request->user('sanctum');
+        $organisation = $actor
+            ? RegistrationRequest::where('email', $actor->email)->latest('id')->first()
+            : null;
 
         // Search for student
         $student = Student::where('university_id', $request->university_id)
@@ -53,10 +58,10 @@ class VerificationController extends Controller
         $log = VerificationLog::create([
             'university_id' => $request->university_id,
             'student_id' => $student?->id,
-            'verifier_name' => $request->verifier_name ?? 'Anonymous',
-            'verifier_email' => $request->verifier_email,
-            'organization_type' => $request->organization_type ?? 'Unknown',
-            'organization_name' => $request->organization_name ?? 'Unknown',
+            'verifier_name' => $actor?->name ?? 'Anonymous',
+            'verifier_email' => $actor?->email,
+            'organization_type' => $organisation?->organization_type ?? 'Unknown',
+            'organization_name' => $organisation?->organization_name ?? 'Unknown',
             'searched_name' => $request->graduate_name,
             'searched_father_name' => $request->father_name,
             'searched_degree' => $request->degree,

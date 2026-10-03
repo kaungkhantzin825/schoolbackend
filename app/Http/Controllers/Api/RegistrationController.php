@@ -24,7 +24,6 @@ class RegistrationController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
-            'confirm_email' => 'required|same:email',
             'password' => 'required|string|min:8|confirmed',
             'organization_name' => 'required|string|max:255',
             'organization_type' => 'required|string|max:255',
