@@ -25,6 +25,7 @@ class RegistrationController extends Controller
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
             'confirm_email' => 'required|same:email',
+            'password' => 'required|string|min:8|confirmed',
             'organization_name' => 'required|string|max:255',
             'organization_type' => 'required|string|max:255',
             'country' => 'required|string|max:255',
@@ -47,19 +48,16 @@ class RegistrationController extends Controller
             'status' => 'approved',
         ]);
 
-        // Provision the verifier account. The password is random (never a
-        // shared default) and is emailed so they can sign in again later —
-        // the registration form itself never collects one.
-        $plainPassword = Str::password(12);
-
+        // The applicant chooses their own password, so nothing secret is ever
+        // put in an email — the welcome message just confirms the account.
         $user = User::create([
             'name' => $validated['full_name'],
             'email' => $validated['email'],
-            'password' => Hash::make($plainPassword),
+            'password' => Hash::make($validated['password']),
             'role' => 'verifier',
         ]);
 
-        $this->sendCredentialsEmail($registration, $plainPassword);
+        $this->sendCredentialsEmail($registration, null);
 
         $token = $user->createToken('verifier_auth_token')->plainTextToken;
 
@@ -153,7 +151,7 @@ class RegistrationController extends Controller
     {
         $passwordLine = $plainPassword
             ? "<p><strong>Temporary password:</strong> {$plainPassword}<br><span style=\"color:#64748b;font-size:13px\">Please change it after logging in.</span></p>"
-            : "<p>Use your existing MAVER password to log in.</p>";
+            : "<p>Sign in using the password you chose when you registered.</p>";
 
         return <<<HTML
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
