@@ -31,7 +31,6 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::get('/universities/search', [UniversityController::class, 'search'])->middleware('throttle:search');
-Route::post('/verify', [VerificationController::class, 'verify'])->middleware('throttle:verify');
 Route::get('/universities/{university}/degrees', [DegreeController::class, 'byUniversity']);
 Route::post('/registrations', [RegistrationController::class, 'store'])->middleware('throttle:registrations');
 
@@ -40,6 +39,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
+
+    // Verification requires an account so every enquiry is attributable to a
+    // named organisation — anonymous checks produced "Anonymous / Unknown"
+    // rows that could not be audited.
+    Route::post('/verify', [VerificationController::class, 'verify'])->middleware('throttle:verify');
 
     // Own verification history — scoped per role inside the controller
     Route::get('/verification-logs', [VerificationController::class, 'logs']);

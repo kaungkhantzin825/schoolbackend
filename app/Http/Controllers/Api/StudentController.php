@@ -81,7 +81,7 @@ class StudentController extends Controller
             'degree' => 'required|string|max:255',
             'specialization' => 'nullable|string|max:255',
             'graduation_year' => 'required|integer|min:1900|max:' . (date('Y') + 10),
-            'photo_url' => 'nullable|url',
+            'photo_url' => ['nullable', 'string', 'max:500', 'regex:/^(https?:\/\/|\/uploads\/)/'],
         ]);
 
         $universityId = $this->resolveUniversityId($request);
@@ -126,7 +126,7 @@ class StudentController extends Controller
             'degree' => 'sometimes|required|string|max:255',
             'specialization' => 'nullable|string|max:255',
             'graduation_year' => 'sometimes|required|integer|min:1900|max:' . (date('Y') + 10),
-            'photo_url' => 'nullable|url',
+            'photo_url' => ['nullable', 'string', 'max:500', 'regex:/^(https?:\/\/|\/uploads\/)/'],
         ]);
 
         // Never take university_id from the request — a tenant could otherwise
@@ -189,8 +189,15 @@ class StudentController extends Controller
             ], 500);
         }
 
+        // Return a path relative to the backend, NOT an absolute URL built from
+        // APP_URL. An APP_URL left at its default (or changed later) would bake
+        // an unreachable host into every stored record; the frontend resolves
+        // this path against whatever API origin it is actually talking to.
+        $path = '/uploads/student-photos/' . $name;
+
         return response()->json([
-            'url' => rtrim(config('app.url'), '/') . '/uploads/student-photos/' . $name,
+            'url' => $path,
+            'absolute_url' => rtrim(config('app.url'), '/') . $path,
         ]);
     }
 

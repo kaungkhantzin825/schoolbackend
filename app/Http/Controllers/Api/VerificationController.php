@@ -22,12 +22,12 @@ class VerificationController extends Controller
         ]);
 
         // Identify the verifier from their signed-in account rather than from
-        // anything they type: /verify is a public route, so the token is read
-        // through the sanctum guard explicitly. Anonymous checks stay allowed.
-        $actor = $request->user('sanctum');
-        $organisation = $actor
-            ? RegistrationRequest::where('email', $actor->email)->latest('id')->first()
-            : null;
+        // anything they type. The route requires authentication, so there is
+        // always an actor — no more "Anonymous / Unknown" rows in the logs.
+        $actor = $request->user();
+        $organisation = RegistrationRequest::where('email', $actor->email)
+            ->latest('id')
+            ->first();
 
         // Search for student
         $student = Student::where('university_id', $request->university_id)
@@ -58,10 +58,10 @@ class VerificationController extends Controller
         $log = VerificationLog::create([
             'university_id' => $request->university_id,
             'student_id' => $student?->id,
-            'verifier_name' => $actor?->name ?? 'Anonymous',
-            'verifier_email' => $actor?->email,
-            'organization_type' => $organisation?->organization_type ?? 'Unknown',
-            'organization_name' => $organisation?->organization_name ?? 'Unknown',
+            'verifier_name' => $actor->name,
+            'verifier_email' => $actor->email,
+            'organization_type' => $organisation?->organization_type ?? '—',
+            'organization_name' => $organisation?->organization_name ?? $actor->name,
             'searched_name' => $request->graduate_name,
             'searched_father_name' => $request->father_name,
             'searched_degree' => $request->degree,
