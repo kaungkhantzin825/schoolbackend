@@ -35,7 +35,7 @@ class UniversityController extends Controller
             'name' => 'required|string|max:255',
             'location' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'logo_url' => 'nullable|url',
+            'logo_url' => ['nullable', 'string', 'max:500', 'regex:/^(https?:\/\/|\/uploads\/)/'],
             'status' => 'required|in:active,inactive',
             'verification_notice' => 'nullable|string',
         ]);
@@ -43,6 +43,48 @@ class UniversityController extends Controller
         $university = University::create($request->all());
 
         return response()->json($university, 201);
+    }
+
+    /**
+     * Upload a university logo and return its path.
+     *
+     * Logos used to be pasted in as external URLs (Wikipedia, etc.), which
+     * silently broke: those hosts block hot-linking from other domains, so
+     * the browser got a 403 and the page fell back to a placeholder.
+     */
+    public function uploadLogo(Request $request)
+    {
+        $request->validate([
+            'logo' => 'required|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
+        ]);
+
+        $file = $request->file('logo');
+        $name = 'uni_' . uniqid() . '.' . strtolower($file->getClientOriginalExtension());
+        $directory = public_path('uploads/university-logos');
+
+        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+            return response()->json([
+                'message' => 'Upload folder could not be created on the server. Create "public/uploads/university-logos" and make it writable (chmod 775).',
+            ], 500);
+        }
+
+        if (!is_writable($directory)) {
+            return response()->json([
+                'message' => 'Upload folder is not writable on the server. Run: chmod -R 775 public/uploads',
+            ], 500);
+        }
+
+        try {
+            $file->move($directory, $name);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'The logo could not be saved on the server. Please check the upload folder permissions.',
+            ], 500);
+        }
+
+        return response()->json(['url' => '/uploads/university-logos/' . $name]);
     }
 
     /**
@@ -68,7 +110,7 @@ class UniversityController extends Controller
             'name' => 'sometimes|required|string|max:255',
             'location' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
-            'logo_url' => 'nullable|url',
+            'logo_url' => ['nullable', 'string', 'max:500', 'regex:/^(https?:\/\/|\/uploads\/)/'],
             'status' => 'sometimes|required|in:active,inactive',
             'verification_notice' => 'nullable|string',
         ]);

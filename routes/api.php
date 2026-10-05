@@ -63,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('degrees', DegreeController::class);
 
         Route::get('/universities/stats', [UniversityController::class, 'stats']);
+        Route::post('/universities/upload-logo', [UniversityController::class, 'uploadLogo']);
         Route::put('/universities/{university}', [UniversityController::class, 'update']);
         Route::patch('/universities/{university}', [UniversityController::class, 'update']);
     });
