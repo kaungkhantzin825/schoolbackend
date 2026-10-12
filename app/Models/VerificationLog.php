@@ -26,6 +26,8 @@ class VerificationLog extends Model
         'status',
         'sla_due_at',
         'notes',
+        'document_url',
+        'document_name',
     ];
 
     protected $casts = [

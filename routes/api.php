@@ -45,6 +45,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // rows that could not be audited.
     Route::post('/verify', [VerificationController::class, 'verify'])->middleware('throttle:verify');
 
+    // Older Myanmar-language degrees that cannot be keyed into the search form
+    // are raised by uploading the certificate scan instead. Always pending.
+    Route::post('/verify/upload', [VerificationController::class, 'submitWithDocument'])->middleware('throttle:verify');
+
     // Own verification history — scoped per role inside the controller
     Route::get('/verification-logs', [VerificationController::class, 'logs']);
     Route::get('/verification-logs/recent', [VerificationController::class, 'recentActivity']);
