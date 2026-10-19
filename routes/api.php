@@ -30,6 +30,11 @@ use Illuminate\Support\Facades\Route;
 // collectively locked out.
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
+// Password reset — public by necessity (the user cannot sign in). Throttled
+// per account and per IP so the endpoint cannot be used to spam an inbox.
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:password');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password');
+
 Route::get('/universities/search', [UniversityController::class, 'search'])->middleware('throttle:search');
 Route::get('/universities/{university}/degrees', [DegreeController::class, 'byUniversity']);
 Route::post('/registrations', [RegistrationController::class, 'store'])->middleware('throttle:registrations');

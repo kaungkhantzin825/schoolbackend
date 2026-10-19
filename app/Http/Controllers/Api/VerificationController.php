@@ -343,7 +343,10 @@ class VerificationController extends Controller
                 'status' => 'success',
                 'result' => 'verified',
                 'sla_due_at' => null,
-                'notes' => $finalNotes,
+                // `notes` stays as the verifier wrote it; the registrar's
+                // wording lives in its own column so neither overwrites the
+                // other.
+                'resolution_notes' => $finalNotes,
             ]);
         } else {
             $finalNotes = $validated['notes'] ?? 'Record not found in university archives after manual review.';
@@ -351,7 +354,7 @@ class VerificationController extends Controller
                 'status' => 'failed',
                 'result' => 'not_found',
                 'sla_due_at' => null,
-                'notes' => $finalNotes,
+                'resolution_notes' => $finalNotes,
             ]);
         }
 
@@ -386,6 +389,14 @@ class VerificationController extends Controller
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
+        }
+
+        // Registrar-declined requests. A `request_ref` is the discriminator:
+        // only requests that were queued for manual review ever receive one,
+        // so an instant "not found" search stays out of this list even though
+        // it shares the `failed` status.
+        if ($request->boolean('rejected')) {
+            $query->where('status', 'failed')->whereNotNull('request_ref');
         }
 
         if ($request->has('result')) {

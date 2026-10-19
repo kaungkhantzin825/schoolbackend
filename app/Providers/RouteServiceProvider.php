@@ -77,5 +77,17 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('search', function (Request $request) {
             return Limit::perMinute(180)->by('search-ip:' . $request->ip());
         });
+
+        // Password reset is unauthenticated, so it is the easiest way to flood
+        // someone's inbox. Keyed on the target account *and* the caller, since
+        // both abuse patterns matter (harass one person vs. spray many).
+        RateLimiter::for('password', function (Request $request) {
+            $email = strtolower((string) $request->input('email'));
+
+            return [
+                Limit::perMinute(5)->by('pw-account:' . $email),
+                Limit::perHour(20)->by('pw-ip:' . $request->ip()),
+            ];
+        });
     }
 }
