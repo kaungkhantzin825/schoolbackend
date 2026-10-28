@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\RegistrationRequest;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -57,6 +58,10 @@ class RegistrationController extends Controller
         ]);
 
         $this->sendCredentialsEmail($registration, null);
+
+        ActivityLogger::record(ActivityLogger::ACCOUNT_CREATED, $user, $request, [
+            'description' => 'Verifier account created via public registration',
+        ]);
 
         $token = $user->createToken('verifier_auth_token')->plainTextToken;
 
@@ -139,7 +144,8 @@ class RegistrationController extends Controller
         try {
             Mail::html($body, function ($message) use ($registrationRequest) {
                 $message->to($registrationRequest->email, $registrationRequest->full_name)
-                    ->subject('Your MAVER Verifier account is ready');
+                    ->from(config('mail.from.address'), config('acvr.name'))
+                    ->subject('Your ACVR verifier account is ready');
             });
         } catch (\Throwable $e) {
             report($e);
@@ -152,15 +158,21 @@ class RegistrationController extends Controller
             ? "<p><strong>Temporary password:</strong> {$plainPassword}<br><span style=\"color:#64748b;font-size:13px\">Please change it after logging in.</span></p>"
             : "<p>Sign in using the password you chose when you registered.</p>";
 
+        $support = config('acvr.support_email');
+        $longName = e(config('acvr.long_name'));
+
         return <<<HTML
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
-                <h2 style="color:#163172">Welcome to MAVER</h2>
+                <h2 style="color:#163172">Welcome to ACVR</h2>
                 <p>Hi {$registrationRequest->full_name},</p>
                 <p>Your verifier registration for <strong>{$registrationRequest->organization_name}</strong> has been approved.</p>
                 <p><strong>Login email:</strong> {$registrationRequest->email}</p>
                 {$passwordLine}
                 <p><a href="{$loginUrl}" style="background:#1d4ed8;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">Go to Login</a></p>
-                <p style="color:#94a3b8;font-size:12px">Myanmar Academic Verification &amp; Educational Registry</p>
+                <p style="color:#94a3b8;font-size:12px;line-height:1.6">
+                    {$longName}<br>
+                    Need help? Write to <a href="mailto:{$support}" style="color:#1d4ed8">{$support}</a>
+                </p>
             </div>
         HTML;
     }

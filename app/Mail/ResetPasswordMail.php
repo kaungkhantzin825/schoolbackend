@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -29,6 +30,10 @@ class ResetPasswordMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
+            // Explicit sender: the framework default would show the display
+            // name from MAIL_FROM_NAME, which is not always set on the server
+            // (recipients then see a bare "Laravel").
+            from: new Address(config('mail.from.address'), config('acvr.name')),
             subject: 'Reset your ACVR password',
         );
     }

@@ -85,6 +85,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | Behind Cloudflare or a load balancer, the socket address is the proxy's,
+    | not the visitor's. Without trusting the forwarded headers the activity
+    | log would record the proxy's IP and country for every request. Set
+    | TRUSTED_PROXIES to "*" or to a comma-separated list of proxy addresses.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -52,6 +53,10 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
             'role' => $request->role,
             'university_id' => $request->university_id,
+        ]);
+
+        ActivityLogger::record(ActivityLogger::ACCOUNT_CREATED, $user, $request, [
+            'description' => 'Created by ' . ($request->user()?->email ?? 'system'),
         ]);
 
         return response()->json($user->load('university'), 201);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\ResetPasswordMail;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -34,6 +35,10 @@ class AuthController extends Controller
         if (!$user) {
             return response()->json($generic);
         }
+
+        ActivityLogger::record(ActivityLogger::PASSWORD_RESET_REQUESTED, $user, $request, [
+            'description' => 'Reset link emailed',
+        ]);
 
         try {
             $token = Password::broker()->createToken($user);
@@ -70,6 +75,10 @@ class AuthController extends Controller
             function (User $user, string $password) {
                 $user->forceFill(['password' => Hash::make($password)])->save();
                 $user->tokens()->delete();
+
+                ActivityLogger::record(ActivityLogger::PASSWORD_RESET, $user, request(), [
+                    'description' => 'Password reset with a mailed token; all sessions revoked',
+                ]);
             }
         );
 
@@ -115,6 +124,10 @@ class AuthController extends Controller
         $currentId = $request->user()->currentAccessToken()->id;
         $user->tokens()->where('id', '!=', $currentId)->delete();
 
+        ActivityLogger::record(ActivityLogger::PASSWORD_CHANGED, $user, $request, [
+            'description' => 'Password changed from the dashboard',
+        ]);
+
         return response()->json(['message' => 'Password updated successfully.']);
     }
 
@@ -128,12 +141,24 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
+            // Worth recording even when the address is unknown: repeated
+            // failures against one mailbox are how credential stuffing looks
+            // from the inside.
+            ActivityLogger::record(ActivityLogger::LOGIN_FAILED, $user, $request, [
+                'user_email'  => $user?->email ?? strtolower((string) $request->email),
+                'description' => $user ? 'Incorrect password' : 'No account with this email',
+            ]);
+
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
+
+        ActivityLogger::record(ActivityLogger::LOGIN, $user, $request, [
+            'description' => 'Signed in successfully',
+        ]);
 
         return response()->json([
             'user' => $user->load('university'),
@@ -143,6 +168,12 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $user = $request->user();
+
+        ActivityLogger::record(ActivityLogger::LOGOUT, $user, $request, [
+            'description' => 'Signed out',
+        ]);
+
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out successfully']);

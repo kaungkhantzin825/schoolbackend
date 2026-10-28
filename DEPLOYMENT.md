@@ -10,6 +10,21 @@ APP_ENV=production
 APP_DEBUG=false          # ← critical: true leaks stack traces + DB credentials
 APP_URL=https://backend.mmcertify.com
 FRONTEND_URL=https://<your-frontend-domain>
+
+# Sender name on every outgoing email. Without it recipients see "Laravel".
+MAIL_FROM_NAME="ACVR"
+
+# Contact form destination + branding. This is the *recipient*; the From
+# address must stay the authenticated SMTP account (Gmail refuses to send as
+# an address it does not own).
+ACVR_NAME="ACVR"
+ACVR_SUPPORT_EMAIL="support@acvr.edu.mm"
+ACVR_WEBSITE="https://acvr.edu.mm"
+
+# Behind Cloudflare / a load balancer, set "*" or the proxy IPs. Otherwise the
+# activity log records the proxy's IP and country for every visitor, and the
+# per-IP rate limiters see a single address for the whole internet.
+TRUSTED_PROXIES="*"
 ```
 
 `APP_DEBUG=false` is the single most important line here. The API exception
@@ -75,6 +90,33 @@ chmod -R 775 storage bootstrap/cache public/uploads
 Student photos are written to `public/uploads/student-photos/`. Make sure this
 directory survives deploys (symlink it to persistent storage if you deploy by
 replacing the directory), and back it up with the database.
+
+## 7a. Contact form mailbox
+
+The contact form emails `ACVR_SUPPORT_EMAIL`. Two things must be true or
+messages vanish silently:
+
+1. `support@acvr.edu.mm` must be a real mailbox with an MX record.
+2. The SMTP account in `MAIL_USERNAME` must be allowed to send. It sends *as*
+   itself with the visitor as `Reply-To` — do not set `MAIL_FROM_ADDRESS` to
+   `support@acvr.edu.mm` unless that address is a verified alias on the SMTP
+   provider, or every message will be rejected.
+
+Send one test message from `/contact` after the first deploy and confirm it
+arrives, including in spam.
+
+## 7b. Activity log and IP geolocation
+
+`user_activity_logs` is populated automatically — no cron, no queue. The country
+for each sign-in comes from a free lookup (`ip-api.com`), cached 24 hours per IP
+with a 2-second timeout, and the whole call is fail-open: a missing country
+never blocks a sign-in.
+
+- On a server with no outbound internet, set `ACVR_GEO_LOOKUP=false`; the log
+  then shows `Unknown` instead of waiting on DNS.
+- The log is read-only and visible to Super Admins only. There is no retention
+  policy — add one (e.g. `DELETE FROM user_activity_logs WHERE created_at <
+  NOW() - INTERVAL 12 MONTH`) once the table is large.
 
 ## 8. Scale notes
 

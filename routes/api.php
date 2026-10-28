@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\UniversityController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\VerificationController;
@@ -38,6 +40,10 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middle
 Route::get('/universities/search', [UniversityController::class, 'search'])->middleware('throttle:search');
 Route::get('/universities/{university}/degrees', [DegreeController::class, 'byUniversity']);
 Route::post('/registrations', [RegistrationController::class, 'store'])->middleware('throttle:registrations');
+
+// Public contact form — delivered to the support mailbox. Throttled hard: it
+// is an open relay into someone's inbox if it is not.
+Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:contact');
 
 // ── Authenticated ──
 Route::middleware('auth:sanctum')->group(function () {
@@ -86,6 +92,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/registrations', [RegistrationController::class, 'index']);
         Route::patch('/registrations/{registrationRequest}', [RegistrationController::class, 'update']);
+
+        // Account activity trail — read-only, platform-wide.
+        Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+        Route::get('/activity-logs/summary', [ActivityLogController::class, 'summary']);
     });
 });
 

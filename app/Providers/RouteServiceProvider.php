@@ -89,5 +89,15 @@ class RouteServiceProvider extends ServiceProvider
                 Limit::perHour(20)->by('pw-ip:' . $request->ip()),
             ];
         });
+
+        // The contact form sends mail on someone else's behalf, so it gets the
+        // tightest budget of any public endpoint: three messages an hour is
+        // already more than a genuine enquirer needs.
+        RateLimiter::for('contact', function (Request $request) {
+            return [
+                Limit::perHour(3)->by('contact-ip:' . $request->ip()),
+                Limit::perHour(10)->by('contact-email:' . strtolower((string) $request->input('email'))),
+            ];
+        });
     }
 }
