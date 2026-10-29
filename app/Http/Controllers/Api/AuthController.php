@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\ResetPasswordMail;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\FrontendUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -42,7 +43,9 @@ class AuthController extends Controller
 
         try {
             $token = Password::broker()->createToken($user);
-            Mail::to($user->email)->send(new ResetPasswordMail($user, $token));
+            Mail::to($user->email)->send(
+                new ResetPasswordMail($user, $token, FrontendUrl::base($request))
+            );
         } catch (\Throwable $e) {
             // Never report success when the mail did not actually leave —
             // the user would sit waiting for a link that is never coming.

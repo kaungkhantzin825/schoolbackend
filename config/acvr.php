@@ -27,6 +27,17 @@ return [
     // Public site, used in email links and the contact page.
     'website' => env('ACVR_WEBSITE', 'https://acvr.edu.mm'),
 
+    // Extra frontend origins allowed to appear in emailed links, comma
+    // separated — useful while the site lives on two domains during a move.
+    // A request's Origin header is honoured ONLY if it is listed here:
+    // trusting an arbitrary Origin would let an attacker request a reset for
+    // someone else's account and have the token emailed to a link on their
+    // own domain. FRONTEND_URL remains the default.
+    'frontend_urls' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('ACVR_FRONTEND_URLS', ''))
+    ))),
+
     // Resolve a country name for logged IPs (one cached lookup per address per
     // day, 2s timeout). Set to false on a server with no outbound internet —
     // the log then simply shows "Unknown" instead of waiting on DNS.

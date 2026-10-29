@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\RegistrationRequest;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\FrontendUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -138,7 +139,7 @@ class RegistrationController extends Controller
      */
     private function sendCredentialsEmail(RegistrationRequest $registrationRequest, ?string $plainPassword): void
     {
-        $loginUrl = rtrim(config('app.frontend_url'), '/') . '/login';
+        $loginUrl = FrontendUrl::path('/login');
         $body = $this->credentialsEmailHtml($registrationRequest, $plainPassword, $loginUrl);
 
         try {

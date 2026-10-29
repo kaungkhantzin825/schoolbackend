@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\User;
+use App\Support\FrontendUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -24,6 +25,9 @@ class ResetPasswordMail extends Mailable
     public function __construct(
         public User $user,
         public string $token,
+        // Resolved while the HTTP request is still available; the mailable
+        // itself may be rendered later (if queued) when request() is gone.
+        public ?string $frontendBase = null,
     ) {
     }
 
@@ -40,7 +44,7 @@ class ResetPasswordMail extends Mailable
 
     public function content(): Content
     {
-        $base = rtrim((string) config('app.frontend_url'), '/');
+        $base = $this->frontendBase ?: FrontendUrl::base();
 
         return new Content(
             view: 'emails.reset-password',

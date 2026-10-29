@@ -9,7 +9,17 @@ steps are not optional.
 APP_ENV=production
 APP_DEBUG=false          # ← critical: true leaks stack traces + DB credentials
 APP_URL=https://backend.mmcertify.com
+# Public URL of the React site. Password-reset and account-approval emails are
+# built from this — if it is missing, recipients get a http://localhost link
+# that only works on a developer's machine. A misconfiguration is logged as an
+# error in storage/logs/laravel.log ("FRONTEND_URL is unset or points at
+# localhost"), so grep for that if an emailed link looks wrong.
 FRONTEND_URL=https://<your-frontend-domain>
+
+# Optional, comma separated. While the site is reachable on two domains, list
+# both so links match the domain the user actually came from. Only origins
+# listed here are ever trusted from a request header.
+# ACVR_FRONTEND_URLS=https://acvr.edu.mm,https://project.digiserve.com.mm
 
 # Sender name on every outgoing email. Without it recipients see "Laravel".
 MAIL_FROM_NAME="ACVR"
